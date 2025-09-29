@@ -1,32 +1,44 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"unicode"
 )
 
-// Вход: "a4bc2d5e"
-// Выход: "aaaabccddddde"
-func unpack(s string) string {
-	runes := []rune(s)
+func unpack(s string) (string, error) {
+
 	var builder strings.Builder
-	for i, v := range runes {
-		if unicode.IsDigit(v) {
-			if runes[i-1] == '/' {
-				builder.WriteRune(v)
-			}else{
-				builder.WriteString(strings.Repeat(string(runes[i-1]), int(v-'0')-1))
+	var prevRune rune
+	esc := false //Флаг экранирования
+
+	for _, r := range s {
+		switch {
+		case esc: // Если предыдущий сивол был экранирован
+			builder.WriteRune(r)
+			prevRune = r
+			esc = false
+		case r == '\\': // Если экранирование
+			esc = true
+		case unicode.IsDigit(r): //Ежели цифра
+			if prevRune == 0 {
+				return "", errors.New("без символа но цифра есть!!!!!!!")
 			}
-		}else {
-			if v != '/'{
-				builder.WriteRune(v)
-			}
+
+			builder.WriteString(strings.Repeat(string(prevRune), int(r-'0')-1))
+		default: //Букова
+			builder.WriteRune(r)
+			prevRune = r
 		}
+
 	}
-	return builder.String()
+	if esc {
+		return "", errors.New("некорректная строка: оканчивается на \\!!!!!!!!")
+	}
+	return builder.String(), nil
 }
 
 func main() {
-	fmt.Println(unpack("qwe/4/5"))
+	fmt.Println(unpack("45"))
 }
