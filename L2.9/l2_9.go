@@ -23,7 +23,7 @@ func unpack(s string) (string, error) {
 			esc = true
 		case unicode.IsDigit(r): //Ежели цифра
 			if prevRune == 0 {
-				return "", errors.New("без символа но цифра есть!!!!!!!")
+				return "", errors.New("без символа но цифра есть")
 			}
 
 			builder.WriteString(strings.Repeat(string(prevRune), int(r-'0')-1))
@@ -34,7 +34,7 @@ func unpack(s string) (string, error) {
 
 	}
 	if esc {
-		return "", errors.New("некорректная строка: оканчивается на \\!!!!!!!!")
+		return "", errors.New("некорректная строка: оканчивается на экранирование")
 	}
 	return builder.String(), nil
 }
