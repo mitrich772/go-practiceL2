@@ -226,12 +226,7 @@ func (s *Sorter) compareLinesB(a, b string) int {
 
 // Проверяет, отсортирован ли массив строк в соответствии с compareLines
 func (s *Sorter) isSorted(lines []string) bool {
-	for i := 1; i < len(lines); i++ {
-		if s.compareLinesB(lines[i-1], lines[i]) > 0 {
-			return false
-		}
-	}
-	return true
+	return slices.IsSortedFunc(lines, s.compareLinesB)
 }
 
 // Берет колонку из строки по номеру разделитель - табуляция
