@@ -18,3 +18,17 @@ the word hello is here
 HELLO_WORLD
 not this one
 finalHELLOtest
+hello
+he(l)lo
+he?llo
+he.llo
+he*llo
+he+llo
+he|llo
+he^llo
+he$llo
+[hello]
+{hello}
+(hello)
+HELLO
+nothello
