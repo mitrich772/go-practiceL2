@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -75,7 +74,7 @@ func (ct Cutter) getNeeded(cutedLine []string, columnsToSave []int) (string, err
 	var res []string
 	for _, columnNumber := range columnsToSave {
 		if columnNumber <= 0 || columnNumber > len(cutedLine) {
-			return "", errors.New(fmt.Sprintf("Колонка %d не может быть в строке разбитой на %d колонок", columnNumber, len(cutedLine)))
+			return "", fmt.Errorf("колонка %d не может быть в строке разбитой на %d колонок", columnNumber, len(cutedLine))
 		}
 		res = append(res, cutedLine[columnNumber-1])
 	}
