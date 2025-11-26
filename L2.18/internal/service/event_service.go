@@ -14,51 +14,43 @@ type EventService struct {
 	lastID  int64
 }
 
-func NewEventService(store store.Store) *EventService {
+func NewEventService(s store.Store) *EventService {
 	return &EventService{
-		Storage: store,
+		Storage: s,
 		lastID:  0,
 	}
 }
 
 func (srv *EventService) CreateEvent(event *store.Event) (*store.Event, error) {
 	event.ID = atomic.AddInt64(&srv.lastID, 1)
-	srv.Storage.Create(*event)
+	srv.Storage.Create(event)
 	return event, nil
 }
 
-func (srv *EventService) UpdateEvent(event *store.Event) (*store.Event, error) {
-	updated, err := srv.Storage.Update(*event)
-	if err != nil {
-		return nil, err
-	}
-	return &updated, nil
+func (srv *EventService) UpdateEvent(id int64, event *store.Event) (*store.Event, error) {
+	return srv.Storage.Update(id, event)
 }
 
-func (srv *EventService) DeleteEvent(id int64) error {
+func (srv *EventService) DeleteEvent(id int64) (*store.Event, error) {
 	return srv.Storage.Delete(id)
 }
 
-func (srv *EventService) GetEventsForDay(userId int64, dayStr string) ([]store.Event, error) {
+func (srv *EventService) GetEventsForDay(userId int64, dayStr string) ([]*store.Event, error) {
 	events := srv.Storage.List(userId)
 
-	var res []store.Event
-	const layout = "2006-01-02" // формат даты в строке
-
+	const layout = "2006-01-02"
 	day, err := time.Parse(layout, dayStr)
 	if err != nil {
-		return nil, fmt.Errorf("неверный формат даты для поиска: %s", dayStr)
+		return nil, fmt.Errorf("неверный формат даты: %s", dayStr)
 	}
 
-	for _, ev := range events {
-		if ev.UserID != userId {
-			continue
-		}
+	var res []*store.Event
 
+	for _, ev := range events {
 		evDate, err := time.Parse(layout, ev.Date)
 		if err != nil {
-			log.Printf("не удалось распарсить дату %s | %v", evDate, err)
-			continue // пропускаем некорректные даты
+			log.Printf("не удалось распарсить дату %s | %v", ev.Date, err)
+			continue
 		}
 
 		if evDate.Year() == day.Year() &&
@@ -71,32 +63,26 @@ func (srv *EventService) GetEventsForDay(userId int64, dayStr string) ([]store.E
 	return res, nil
 }
 
-func (srv *EventService) GetEventsForWeek(userId int64, dayStr string) ([]store.Event, error) {
+func (srv *EventService) GetEventsForWeek(userId int64, dayStr string) ([]*store.Event, error) {
 	events := srv.Storage.List(userId)
 
-	var res []store.Event
 	const layout = "2006-01-02"
-
 	day, err := time.Parse(layout, dayStr)
 	if err != nil {
-		return nil, fmt.Errorf("неверный формат даты для поиска: %s", dayStr)
+		return nil, fmt.Errorf("неверный формат даты: %s", dayStr)
 	}
 
 	year, week := day.ISOWeek()
+	var res []*store.Event
 
 	for _, ev := range events {
-		if ev.UserID != userId {
+		evDate, err := time.Parse(layout, ev.Date)
+		if err != nil {
+			log.Printf("не удалось распарсить дату %s", ev.Date)
 			continue
 		}
 
-		evDate, err := time.Parse(layout, ev.Date)
-		if err != nil {
-			log.Printf("не удалось распарсить дату %s", evDate)
-			continue // пропускаем некорректные даты
-		}
-
 		evYear, evWeek := evDate.ISOWeek()
-
 		if evYear == year && evWeek == week {
 			res = append(res, ev)
 		}
@@ -105,28 +91,24 @@ func (srv *EventService) GetEventsForWeek(userId int64, dayStr string) ([]store.
 	return res, nil
 }
 
-func (srv *EventService) GetEventsForMonth(userId int64, dayStr string) ([]store.Event, error) {
+func (srv *EventService) GetEventsForMonth(userId int64, dayStr string) ([]*store.Event, error) {
 	events := srv.Storage.List(userId)
 
-	var res []store.Event
 	const layout = "2006-01-02"
-
 	day, err := time.Parse(layout, dayStr)
 	if err != nil {
-		return nil, fmt.Errorf("неверный формат даты для поиска: %s", dayStr)
+		return nil, fmt.Errorf("неверный формат даты: %s", dayStr)
 	}
 
 	targetYear := day.Year()
 	targetMonth := day.Month()
 
-	for _, ev := range events {
-		if ev.UserID != userId {
-			continue
-		}
+	var res []*store.Event
 
+	for _, ev := range events {
 		evDate, err := time.Parse(layout, ev.Date)
 		if err != nil {
-			log.Printf("не удалось распарсить дату %s", evDate)
+			log.Printf("не удалось распарсить дату %s", ev.Date)
 			continue
 		}
 

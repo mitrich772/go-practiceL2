@@ -13,66 +13,70 @@ type Event struct {
 }
 
 type Store interface {
-	Create(Event)
-	Update(Event) (Event, error)
-	Delete(int64) error
-	Get(int64) (Event, error)
-	List(int64) []Event
+	Create(*Event)
+	Update(int64, *Event) (*Event, error)
+	Delete(int64) (*Event, error)
+	Get(int64) (*Event, error)
+	List(int64) []*Event
 }
 
 type EventStore struct {
-	data map[int64]Event
+	data map[int64]*Event
 	mu   sync.Mutex
 }
 
 func NewEventStore() *EventStore {
-	return &EventStore{data: make(map[int64]Event)}
+	return &EventStore{data: make(map[int64]*Event)}
 }
-func (es *EventStore) Create(e Event) {
+
+func (es *EventStore) Create(e *Event) {
 	es.mu.Lock()
 	es.data[e.ID] = e
 	es.mu.Unlock()
 }
 
-func (es *EventStore) Update(e Event) (Event, error) {
-	es.mu.Lock()
-	defer es.mu.Unlock()
-
-	if _, exists := es.data[e.ID]; !exists {
-		return Event{}, fmt.Errorf("no event with id=%d to uptade", e.ID)
-	}
-
-	es.data[e.ID] = e
-	return e, nil
-}
-
-func (es *EventStore) Delete(id int64) error {
+func (es *EventStore) Update(id int64, eNew *Event) (*Event, error) {
 	es.mu.Lock()
 	defer es.mu.Unlock()
 
 	if _, exists := es.data[id]; !exists {
-		return fmt.Errorf("no id=%d to delete", id)
+		return nil, fmt.Errorf("no event with id=%d to update", id)
+	}
+
+	es.data[id] = eNew
+	return eNew, nil
+}
+
+func (es *EventStore) Delete(id int64) (*Event, error) {
+	es.mu.Lock()
+	defer es.mu.Unlock()
+
+	ev, exists := es.data[id]
+	if !exists {
+		return nil, fmt.Errorf("no id=%d to delete", id)
 	}
 
 	delete(es.data, id)
-	return nil
+	return ev, nil
 }
 
-func (es *EventStore) Get(id int64) (Event, error) {
+func (es *EventStore) Get(id int64) (*Event, error) {
 	es.mu.Lock()
 	defer es.mu.Unlock()
-	if _, exists := es.data[id]; !exists {
-		return Event{}, fmt.Errorf("no id=%d to delete", id)
+
+	ev, exists := es.data[id]
+	if !exists {
+		return nil, fmt.Errorf("no id=%d", id)
 	}
-	return es.data[id], nil
+
+	return ev, nil
 }
 
-// List возращает все события для переданного userId
-func (es *EventStore) List(userId int64) []Event {
+func (es *EventStore) List(userId int64) []*Event {
 	es.mu.Lock()
 	defer es.mu.Unlock()
 
-	res := make([]Event, 0, len(es.data))
+	res := make([]*Event, 0)
 	for _, ev := range es.data {
 		if ev.UserID == userId {
 			res = append(res, ev)

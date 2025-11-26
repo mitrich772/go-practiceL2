@@ -19,10 +19,11 @@ func main() {
 	stm := web.ServerTmpl{Service: evServ}
 
 	muxServ.HandleFunc("/create_event", stm.CreateEvent)
+	muxServ.HandleFunc("/update_event", stm.UpdateEvent)
+	muxServ.HandleFunc("/delete_event", stm.DeleteEvent)
 	muxServ.HandleFunc("/events_for_day", stm.GetEventsForDay)
 	muxServ.HandleFunc("/events_for_week", stm.GetEventsForWeek)
 	muxServ.HandleFunc("/events_for_mounth", stm.GetEventsForMonth)
-	muxServ.HandleFunc(" /delete_event", stm.DeleteEvent)
 
 	port := "1235"
 	go func() {
