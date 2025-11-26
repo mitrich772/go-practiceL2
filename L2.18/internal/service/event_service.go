@@ -70,6 +70,7 @@ func (srv *EventService) GetEventsForDay(userId int64, dayStr string) ([]store.E
 
 	return res, nil
 }
+
 func (srv *EventService) GetEventsForWeek(userId int64, dayStr string) ([]store.Event, error) {
 	events := srv.Storage.List(userId)
 

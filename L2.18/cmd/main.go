@@ -22,6 +22,8 @@ func main() {
 	muxServ.HandleFunc("/events_for_day", stm.GetEventsForDay)
 	muxServ.HandleFunc("/events_for_week", stm.GetEventsForWeek)
 	muxServ.HandleFunc("/events_for_mounth", stm.GetEventsForMonth)
+	muxServ.HandleFunc(" /delete_event", stm.DeleteEvent)
+
 	port := "1235"
 	go func() {
 		log.Println("Web сервер запущен на порту", port)

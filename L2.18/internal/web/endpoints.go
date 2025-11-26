@@ -37,6 +37,28 @@ func (st *ServerTmpl) CreateEvent(w http.ResponseWriter, r *http.Request) { // P
 	json.NewEncoder(w).Encode(createdEvent)
 }
 
+func (st *ServerTmpl) DeleteEvent(w http.ResponseWriter, r *http.Request) { // DELETE /events_for_day/123
+	idStr := r.URL.Query().Get("id")
+	if idStr == "" {
+		http.Error(w, "missing id", http.StatusBadRequest)
+		return
+	}
+
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+
+	err = st.Service.DeleteEvent(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent) // 204 без тела
+}
+
 func (st *ServerTmpl) GetEventsForDay(w http.ResponseWriter, r *http.Request) { // GET /events_for_day?user_id=1&date=2023-12-31
 	query := r.URL.Query()
 
