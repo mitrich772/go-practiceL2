@@ -9,11 +9,13 @@ import (
 	"L2.18/internal/store"
 )
 
+// EventService предоставляет методы работы с Store
 type EventService struct {
 	Storage store.Store
 	lastID  int64
 }
 
+// NewEventService создаёт новый сервис событий с заданным хранилищем
 func NewEventService(s store.Store) *EventService {
 	return &EventService{
 		Storage: s,
@@ -21,22 +23,26 @@ func NewEventService(s store.Store) *EventService {
 	}
 }
 
+// CreateEvent добавляет новое событие и присваивает ему уникальный ID
 func (srv *EventService) CreateEvent(event *store.Event) (*store.Event, error) {
 	event.ID = atomic.AddInt64(&srv.lastID, 1)
 	srv.Storage.Create(event)
 	return event, nil
 }
 
+// UpdateEvent обновляет существующее событие по ID на переданное в event
 func (srv *EventService) UpdateEvent(id int64, event *store.Event) (*store.Event, error) {
 	return srv.Storage.Update(id, event)
 }
 
+// DeleteEvent удаляет событие по ID
 func (srv *EventService) DeleteEvent(id int64) (*store.Event, error) {
 	return srv.Storage.Delete(id)
 }
 
-func (srv *EventService) GetEventsForDay(userId int64, dayStr string) ([]*store.Event, error) {
-	events := srv.Storage.List(userId)
+// GetEventsForDay возвращает события пользователя за конкретный день
+func (srv *EventService) GetEventsForDay(userID int64, dayStr string) ([]*store.Event, error) {
+	events := srv.Storage.List(userID)
 
 	const layout = "2006-01-02"
 	day, err := time.Parse(layout, dayStr)
@@ -45,7 +51,6 @@ func (srv *EventService) GetEventsForDay(userId int64, dayStr string) ([]*store.
 	}
 
 	var res []*store.Event
-
 	for _, ev := range events {
 		evDate, err := time.Parse(layout, ev.Date)
 		if err != nil {
@@ -63,8 +68,9 @@ func (srv *EventService) GetEventsForDay(userId int64, dayStr string) ([]*store.
 	return res, nil
 }
 
-func (srv *EventService) GetEventsForWeek(userId int64, dayStr string) ([]*store.Event, error) {
-	events := srv.Storage.List(userId)
+// GetEventsForWeek возвращает события пользователя за неделю, содержащую указанную дату
+func (srv *EventService) GetEventsForWeek(userID int64, dayStr string) ([]*store.Event, error) {
+	events := srv.Storage.List(userID)
 
 	const layout = "2006-01-02"
 	day, err := time.Parse(layout, dayStr)
@@ -74,7 +80,6 @@ func (srv *EventService) GetEventsForWeek(userId int64, dayStr string) ([]*store
 
 	year, week := day.ISOWeek()
 	var res []*store.Event
-
 	for _, ev := range events {
 		evDate, err := time.Parse(layout, ev.Date)
 		if err != nil {
@@ -91,8 +96,9 @@ func (srv *EventService) GetEventsForWeek(userId int64, dayStr string) ([]*store
 	return res, nil
 }
 
-func (srv *EventService) GetEventsForMonth(userId int64, dayStr string) ([]*store.Event, error) {
-	events := srv.Storage.List(userId)
+// GetEventsForMonth возвращает события пользователя за месяц, содержащий указанную дату
+func (srv *EventService) GetEventsForMonth(userID int64, dayStr string) ([]*store.Event, error) {
+	events := srv.Storage.List(userID)
 
 	const layout = "2006-01-02"
 	day, err := time.Parse(layout, dayStr)
@@ -104,7 +110,6 @@ func (srv *EventService) GetEventsForMonth(userId int64, dayStr string) ([]*stor
 	targetMonth := day.Month()
 
 	var res []*store.Event
-
 	for _, ev := range events {
 		evDate, err := time.Parse(layout, ev.Date)
 		if err != nil {

@@ -1,0 +1,145 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "contact": {}
+    },
+    "paths": {
+        "/create_event": {
+            "post": {
+                "description": "Creates a new event",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Create event",
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/store.Event"
+                        }
+                    }
+                }
+            }
+        },
+        "/delete_event": {
+            "delete": {
+                "description": "Deletes an event by id",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Delete event",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/store.Event"
+                        }
+                    }
+                }
+            }
+        },
+        "/events_for_day": {
+            "get": {
+                "description": "Returns events of user for specific day",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Get events for day",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/store.Event"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/events_for_month": {
+            "get": {
+                "description": "Returns events of user for month of given date",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Get events for month",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/store.Event"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/events_for_week": {
+            "get": {
+                "description": "Returns events of user for week of given date",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Get events for week",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/store.Event"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/update_event": {
+            "post": {
+                "description": "Updates an existing event by id",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Update event",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/store.Event"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "store.Event": {
+            "description": "Событие",
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        }
+    }
+}

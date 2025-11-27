@@ -1,27 +1,44 @@
 package web
 
 import (
-	"strconv"
-
-	"L2.18/internal/service"
-	"L2.18/internal/store"
-
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
+
+	"L2.18/internal/service"
+	"L2.18/internal/store"
 )
 
-type ServerTmpl struct {
+// EventServer реализует HTTP-обработчики для работы с событиями
+type EventServer struct {
 	Service *service.EventService
 }
 
-func (st *ServerTmpl) CreateEvent(w http.ResponseWriter, r *http.Request) {
+// CreateEvent создаёт новое событие
+// @Summary      Create event
+// @Description  Creates a new event
+// @Accept       json
+// @Produce      json
+// @Success      201 {object} store.Event
+// @Router       /create_event [post]
+func (st *EventServer) CreateEvent(w http.ResponseWriter, r *http.Request) {
 	var input store.Event
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest) // 400
 		log.Println("Method:", r.Method)
 		log.Println("Content-Type:", r.Header.Get("Content-Type"))
+	}
+
+	if input.Name == "" {
+		http.Error(w, "name is empty", http.StatusBadRequest)
+		return
+	}
+
+	if input.Date == "" {
+		http.Error(w, "date is empty", http.StatusBadRequest)
+		return
 	}
 
 	createdEvent, err := st.Service.CreateEvent(&input)
@@ -39,7 +56,14 @@ func (st *ServerTmpl) CreateEvent(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(createdEvent)
 }
 
-func (st *ServerTmpl) UpdateEvent(w http.ResponseWriter, r *http.Request) {
+// UpdateEvent обновляет существующее событие по ID
+// @Summary      Update event
+// @Description  Updates an existing event by id
+// @Accept       json
+// @Produce      json
+// @Success      200 {object} store.Event
+// @Router       /update_event [post]
+func (st *EventServer) UpdateEvent(w http.ResponseWriter, r *http.Request) {
 	idStr := r.URL.Query().Get("id")
 	if idStr == "" {
 		http.Error(w, "missing id", http.StatusBadRequest) // 400
@@ -72,7 +96,13 @@ func (st *ServerTmpl) UpdateEvent(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(updatedEvent)
 }
 
-func (st *ServerTmpl) DeleteEvent(w http.ResponseWriter, r *http.Request) {
+// DeleteEvent удаляет событие по ID
+// @Summary      Delete event
+// @Description  Deletes an event by id
+// @Produce      json
+// @Success      200 {object} store.Event
+// @Router       /delete_event [delete]
+func (st *EventServer) DeleteEvent(w http.ResponseWriter, r *http.Request) {
 	idStr := r.URL.Query().Get("id")
 	if idStr == "" {
 		http.Error(w, "missing id", http.StatusBadRequest) // 400
@@ -97,7 +127,13 @@ func (st *ServerTmpl) DeleteEvent(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(deletedEv)
 }
 
-func (st *ServerTmpl) GetEventsForDay(w http.ResponseWriter, r *http.Request) {
+// GetEventsForDay возвращает события пользователя за конкретный день
+// @Summary      Get events for day
+// @Description  Returns events of user for specific day
+// @Produce      json
+// @Success      200 {array} store.Event
+// @Router       /events_for_day [get]
+func (st *EventServer) GetEventsForDay(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 
 	userIDS := query.Get("user_id")
@@ -125,7 +161,13 @@ func (st *ServerTmpl) GetEventsForDay(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(eventsForDay)
 }
 
-func (st *ServerTmpl) GetEventsForWeek(w http.ResponseWriter, r *http.Request) {
+// GetEventsForWeek возвращает события пользователя за неделю, содержащую указанную дату
+// @Summary      Get events for week
+// @Description  Returns events of user for week of given date
+// @Produce      json
+// @Success      200 {array} store.Event
+// @Router       /events_for_week [get]
+func (st *EventServer) GetEventsForWeek(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 
 	userIDS := query.Get("user_id")
@@ -154,7 +196,13 @@ func (st *ServerTmpl) GetEventsForWeek(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(eventsForWeek)
 }
 
-func (st *ServerTmpl) GetEventsForMonth(w http.ResponseWriter, r *http.Request) {
+// GetEventsForMonth возвращает события пользователя за месяц, содержащий указанную дату
+// @Summary      Get events for month
+// @Description  Returns events of user for month of given date
+// @Produce      json
+// @Success      200 {array} store.Event
+// @Router       /events_for_month [get]
+func (st *EventServer) GetEventsForMonth(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 
 	userIDS := query.Get("user_id")

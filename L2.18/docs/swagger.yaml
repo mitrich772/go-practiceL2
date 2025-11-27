@@ -1,0 +1,93 @@
+definitions:
+  store.Event:
+    description: Событие
+    properties:
+      date:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      user_id:
+        type: integer
+    type: object
+info:
+  contact: {}
+paths:
+  /create_event:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new event
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/store.Event'
+      summary: Create event
+  /delete_event:
+    delete:
+      description: Deletes an event by id
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/store.Event'
+      summary: Delete event
+  /events_for_day:
+    get:
+      description: Returns events of user for specific day
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/store.Event'
+            type: array
+      summary: Get events for day
+  /events_for_month:
+    get:
+      description: Returns events of user for month of given date
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/store.Event'
+            type: array
+      summary: Get events for month
+  /events_for_week:
+    get:
+      description: Returns events of user for week of given date
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/store.Event'
+            type: array
+      summary: Get events for week
+  /update_event:
+    post:
+      consumes:
+      - application/json
+      description: Updates an existing event by id
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/store.Event'
+      summary: Update event
+swagger: "2.0"
