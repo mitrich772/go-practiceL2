@@ -17,6 +17,6 @@ func Middleware(handler func(http.ResponseWriter, *http.Request)) func(http.Resp
 
 		handler(w, r)
 
-		log.Printf("done in %v\n", time.Since(start))
+		log.Printf("done in %s\n", time.Since(start))
 	}
 }

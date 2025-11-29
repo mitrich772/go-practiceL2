@@ -17,19 +17,42 @@ const docTemplate = `{
     "paths": {
         "/create_event": {
             "post": {
-                "description": "Creates a new event",
+                "description": "Создаёт новое событие",
                 "consumes": [
                     "application/json"
                 ],
                 "produces": [
                     "application/json"
                 ],
-                "summary": "Create event",
-                "responses": {
-                    "201": {
-                        "description": "Created",
+                "summary": "Создать событие",
+                "parameters": [
+                    {
+                        "description": "JSON события",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
                         "schema": {
                             "$ref": "#/definitions/store.Event"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Созданное событие в поле result",
+                        "schema": {
+                            "$ref": "#/definitions/web.ResultResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Некорректные данные",
+                        "schema": {
+                            "$ref": "#/definitions/web.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Ошибка логики",
+                        "schema": {
+                            "$ref": "#/definitions/web.ErrorResponse"
                         }
                     }
                 }
@@ -37,16 +60,43 @@ const docTemplate = `{
         },
         "/delete_event": {
             "delete": {
-                "description": "Deletes an event by id",
+                "description": "Удаляет событие по ID",
                 "produces": [
                     "application/json"
                 ],
-                "summary": "Delete event",
+                "summary": "Удалить событие",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID события",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Удалённое событие",
                         "schema": {
-                            "$ref": "#/definitions/store.Event"
+                            "$ref": "#/definitions/web.ResultResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Некорректные параметры",
+                        "schema": {
+                            "$ref": "#/definitions/web.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Событие не найдено",
+                        "schema": {
+                            "$ref": "#/definitions/web.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Ошибка логики",
+                        "schema": {
+                            "$ref": "#/definitions/web.ErrorResponse"
                         }
                     }
                 }
@@ -54,19 +104,44 @@ const docTemplate = `{
         },
         "/events_for_day": {
             "get": {
-                "description": "Returns events of user for specific day",
+                "description": "Возвращает события пользователя за указанный день",
                 "produces": [
                     "application/json"
                 ],
-                "summary": "Get events for day",
+                "summary": "Получить события за день",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID пользователя",
+                        "name": "user_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Дата YYYY-MM-DD",
+                        "name": "date",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "События за день",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/store.Event"
-                            }
+                            "$ref": "#/definitions/web.ResultResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Некорректные параметры",
+                        "schema": {
+                            "$ref": "#/definitions/web.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Ошибка логики",
+                        "schema": {
+                            "$ref": "#/definitions/web.ErrorResponse"
                         }
                     }
                 }
@@ -74,19 +149,44 @@ const docTemplate = `{
         },
         "/events_for_month": {
             "get": {
-                "description": "Returns events of user for month of given date",
+                "description": "Возвращает события пользователя за месяц",
                 "produces": [
                     "application/json"
                 ],
-                "summary": "Get events for month",
+                "summary": "Получить события за месяц",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID пользователя",
+                        "name": "user_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Дата YYYY-MM-DD",
+                        "name": "date",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "События за месяц",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/store.Event"
-                            }
+                            "$ref": "#/definitions/web.ResultResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Некорректные параметры",
+                        "schema": {
+                            "$ref": "#/definitions/web.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Ошибка логики",
+                        "schema": {
+                            "$ref": "#/definitions/web.ErrorResponse"
                         }
                     }
                 }
@@ -94,19 +194,44 @@ const docTemplate = `{
         },
         "/events_for_week": {
             "get": {
-                "description": "Returns events of user for week of given date",
+                "description": "Возвращает события пользователя за неделю",
                 "produces": [
                     "application/json"
                 ],
-                "summary": "Get events for week",
+                "summary": "Получить события за неделю",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID пользователя",
+                        "name": "user_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Дата YYYY-MM-DD",
+                        "name": "date",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "События за неделю",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/store.Event"
-                            }
+                            "$ref": "#/definitions/web.ResultResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Некорректные параметры",
+                        "schema": {
+                            "$ref": "#/definitions/web.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Ошибка логики",
+                        "schema": {
+                            "$ref": "#/definitions/web.ErrorResponse"
                         }
                     }
                 }
@@ -114,19 +239,55 @@ const docTemplate = `{
         },
         "/update_event": {
             "post": {
-                "description": "Updates an existing event by id",
+                "description": "Обновляет событие по указанному ID",
                 "consumes": [
                     "application/json"
                 ],
                 "produces": [
                     "application/json"
                 ],
-                "summary": "Update event",
-                "responses": {
-                    "200": {
-                        "description": "OK",
+                "summary": "Обновить событие",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID события",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "description": "JSON события",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
                         "schema": {
                             "$ref": "#/definitions/store.Event"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Обновлённое событие",
+                        "schema": {
+                            "$ref": "#/definitions/web.ResultResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Некорректные параметры",
+                        "schema": {
+                            "$ref": "#/definitions/web.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Событие не найдено",
+                        "schema": {
+                            "$ref": "#/definitions/web.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Ошибка логики",
+                        "schema": {
+                            "$ref": "#/definitions/web.ErrorResponse"
                         }
                     }
                 }
@@ -151,18 +312,32 @@ const docTemplate = `{
                     "type": "integer"
                 }
             }
+        },
+        "web.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "web.ResultResponse": {
+            "type": "object",
+            "properties": {
+                "result": {}
+            }
         }
     }
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "",
+	Version:          "1.0",
 	Host:             "",
 	BasePath:         "",
 	Schemes:          []string{},
-	Title:            "",
-	Description:      "",
+	Title:            "Event API",
+	Description:      "REST API для работы с событиями: создание, изменение, удаление и получение событий за день, неделю и месяц.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

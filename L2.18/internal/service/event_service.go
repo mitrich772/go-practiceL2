@@ -25,6 +25,12 @@ func NewEventService(s store.Store) *EventService {
 
 // CreateEvent добавляет новое событие и присваивает ему уникальный ID
 func (srv *EventService) CreateEvent(event *store.Event) (*store.Event, error) {
+	// проверяем корректность даты
+	_, err := time.Parse("2006-01-02", event.Date)
+	if err != nil {
+		return nil, fmt.Errorf("неверный формат даты, ожидается YYYY-MM-DD: %w", err)
+	}
+
 	event.ID = atomic.AddInt64(&srv.lastID, 1)
 	srv.Storage.Create(event)
 	return event, nil

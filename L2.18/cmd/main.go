@@ -15,15 +15,17 @@ import (
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 
+// @title           Event API
+// @version         1.0
+// @description     REST API для работы с событиями: создание, изменение, удаление и получение событий за день, неделю и месяц.
 func main() {
 	var port string
-	flag.StringVar(&port, "p", "1235", "set port for server")
+	flag.StringVar(&port, "p", "1235", "port for server")
 	flag.Parse()
 
 	muxServ := http.NewServeMux()
 
 	evServ := service.NewEventService(store.NewEventStore())
-
 	stm := web.EventServer{Service: evServ}
 
 	muxServ.HandleFunc("/create_event", logging.Middleware(stm.CreateEvent))
@@ -32,11 +34,13 @@ func main() {
 	muxServ.HandleFunc("/events_for_day", logging.Middleware(stm.GetEventsForDay))
 	muxServ.HandleFunc("/events_for_week", logging.Middleware(stm.GetEventsForWeek))
 	muxServ.HandleFunc("/events_for_month", logging.Middleware(stm.GetEventsForMonth))
-	// Swagger UI
+
 	muxServ.Handle("/swagger/", httpSwagger.WrapHandler)
 
 	go func() {
-		log.Println("Web сервер запущен на порту", port)
+		log.Println("Сервер запущен на порту:", port)
+		log.Println("Swagger UI:", "http://localhost:"+port+"/swagger/index.html")
+
 		if err := http.ListenAndServe(":"+port, muxServ); err != nil {
 			log.Fatal(err)
 		}

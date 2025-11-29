@@ -48,7 +48,7 @@ func (es *EventStore) Update(id int64, eNew *Event) (*Event, error) {
 	defer es.mu.Unlock()
 
 	if _, exists := es.data[id]; !exists {
-		return nil, fmt.Errorf("no event with id=%d to update", id)
+		return nil, fmt.Errorf("event with id=%d not found", id)
 	}
 
 	eNew.ID = id // сохраняем ID
@@ -65,7 +65,7 @@ func (es *EventStore) Delete(id int64) (*Event, error) {
 
 	ev, exists := es.data[id]
 	if !exists {
-		return nil, fmt.Errorf("no id=%d to delete", id)
+		return nil, fmt.Errorf("event with id=%d not found", id)
 	}
 
 	delete(es.data, id)
@@ -79,7 +79,7 @@ func (es *EventStore) Get(id int64) (*Event, error) {
 
 	ev, exists := es.data[id]
 	if !exists {
-		return nil, fmt.Errorf("no event with id=%d", id)
+		return nil, fmt.Errorf("event with id=%d not found", id)
 	}
 
 	return ev, nil

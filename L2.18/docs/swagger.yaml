@@ -11,83 +11,204 @@ definitions:
       user_id:
         type: integer
     type: object
+  web.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  web.ResultResponse:
+    properties:
+      result: {}
+    type: object
 info:
   contact: {}
+  description: 'REST API для работы с событиями: создание, изменение, удаление и получение
+    событий за день, неделю и месяц.'
+  title: Event API
+  version: "1.0"
 paths:
   /create_event:
     post:
       consumes:
       - application/json
-      description: Creates a new event
+      description: Создаёт новое событие
+      parameters:
+      - description: JSON события
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/store.Event'
       produces:
       - application/json
       responses:
         "201":
-          description: Created
+          description: Созданное событие в поле result
           schema:
-            $ref: '#/definitions/store.Event'
-      summary: Create event
+            $ref: '#/definitions/web.ResultResponse'
+        "400":
+          description: Некорректные данные
+          schema:
+            $ref: '#/definitions/web.ErrorResponse'
+        "503":
+          description: Ошибка логики
+          schema:
+            $ref: '#/definitions/web.ErrorResponse'
+      summary: Создать событие
   /delete_event:
     delete:
-      description: Deletes an event by id
+      description: Удаляет событие по ID
+      parameters:
+      - description: ID события
+        in: query
+        name: id
+        required: true
+        type: integer
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Удалённое событие
           schema:
-            $ref: '#/definitions/store.Event'
-      summary: Delete event
+            $ref: '#/definitions/web.ResultResponse'
+        "400":
+          description: Некорректные параметры
+          schema:
+            $ref: '#/definitions/web.ErrorResponse'
+        "404":
+          description: Событие не найдено
+          schema:
+            $ref: '#/definitions/web.ErrorResponse'
+        "503":
+          description: Ошибка логики
+          schema:
+            $ref: '#/definitions/web.ErrorResponse'
+      summary: Удалить событие
   /events_for_day:
     get:
-      description: Returns events of user for specific day
+      description: Возвращает события пользователя за указанный день
+      parameters:
+      - description: ID пользователя
+        in: query
+        name: user_id
+        required: true
+        type: integer
+      - description: Дата YYYY-MM-DD
+        in: query
+        name: date
+        required: true
+        type: string
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: События за день
           schema:
-            items:
-              $ref: '#/definitions/store.Event'
-            type: array
-      summary: Get events for day
+            $ref: '#/definitions/web.ResultResponse'
+        "400":
+          description: Некорректные параметры
+          schema:
+            $ref: '#/definitions/web.ErrorResponse'
+        "503":
+          description: Ошибка логики
+          schema:
+            $ref: '#/definitions/web.ErrorResponse'
+      summary: Получить события за день
   /events_for_month:
     get:
-      description: Returns events of user for month of given date
+      description: Возвращает события пользователя за месяц
+      parameters:
+      - description: ID пользователя
+        in: query
+        name: user_id
+        required: true
+        type: integer
+      - description: Дата YYYY-MM-DD
+        in: query
+        name: date
+        required: true
+        type: string
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: События за месяц
           schema:
-            items:
-              $ref: '#/definitions/store.Event'
-            type: array
-      summary: Get events for month
+            $ref: '#/definitions/web.ResultResponse'
+        "400":
+          description: Некорректные параметры
+          schema:
+            $ref: '#/definitions/web.ErrorResponse'
+        "503":
+          description: Ошибка логики
+          schema:
+            $ref: '#/definitions/web.ErrorResponse'
+      summary: Получить события за месяц
   /events_for_week:
     get:
-      description: Returns events of user for week of given date
+      description: Возвращает события пользователя за неделю
+      parameters:
+      - description: ID пользователя
+        in: query
+        name: user_id
+        required: true
+        type: integer
+      - description: Дата YYYY-MM-DD
+        in: query
+        name: date
+        required: true
+        type: string
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: События за неделю
           schema:
-            items:
-              $ref: '#/definitions/store.Event'
-            type: array
-      summary: Get events for week
+            $ref: '#/definitions/web.ResultResponse'
+        "400":
+          description: Некорректные параметры
+          schema:
+            $ref: '#/definitions/web.ErrorResponse'
+        "503":
+          description: Ошибка логики
+          schema:
+            $ref: '#/definitions/web.ErrorResponse'
+      summary: Получить события за неделю
   /update_event:
     post:
       consumes:
       - application/json
-      description: Updates an existing event by id
+      description: Обновляет событие по указанному ID
+      parameters:
+      - description: ID события
+        in: query
+        name: id
+        required: true
+        type: integer
+      - description: JSON события
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/store.Event'
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Обновлённое событие
           schema:
-            $ref: '#/definitions/store.Event'
-      summary: Update event
+            $ref: '#/definitions/web.ResultResponse'
+        "400":
+          description: Некорректные параметры
+          schema:
+            $ref: '#/definitions/web.ErrorResponse'
+        "404":
+          description: Событие не найдено
+          schema:
+            $ref: '#/definitions/web.ErrorResponse'
+        "503":
+          description: Ошибка логики
+          schema:
+            $ref: '#/definitions/web.ErrorResponse'
+      summary: Обновить событие
 swagger: "2.0"

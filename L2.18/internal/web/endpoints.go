@@ -2,7 +2,6 @@ package web
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -11,222 +10,233 @@ import (
 	"L2.18/internal/store"
 )
 
-// EventServer реализует HTTP-обработчики для работы с событиями
 type EventServer struct {
 	Service *service.EventService
 }
 
-// CreateEvent создаёт новое событие
-// @Summary      Create event
-// @Description  Creates a new event
+// CreateEvent
+// @Summary      Создать событие
+// @Description  Создаёт новое событие
 // @Accept       json
 // @Produce      json
-// @Success      201 {object} store.Event
+// @Param        input body store.Event true "JSON события"
+// @Success      201 {object} web.ResultResponse "Созданное событие в поле result"
+// @Failure      400 {object} web.ErrorResponse "Некорректные данные"
+// @Failure      503 {object} web.ErrorResponse "Ошибка логики"
 // @Router       /create_event [post]
 func (st *EventServer) CreateEvent(w http.ResponseWriter, r *http.Request) {
 	var input store.Event
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest) // 400
-		log.Println("Method:", r.Method)
-		log.Println("Content-Type:", r.Header.Get("Content-Type"))
+		writeError(w, http.StatusBadRequest, "невалидный JSON")
+		return
 	}
 
 	if input.Name == "" {
-		http.Error(w, "name is empty", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "имя не может быть пустым")
 		return
 	}
 
 	if input.Date == "" {
-		http.Error(w, "date is empty", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "дата не может быть пустой")
 		return
 	}
 
 	createdEvent, err := st.Service.CreateEvent(&input)
 	if err != nil {
-		log.Printf("ошибка при создании события %v", err)
-		http.Error(w, err.Error(), http.StatusServiceUnavailable) // 503 хотя мне кажется 404
-
+		log.Printf("ошибка при создании события: %v", err)
+		writeError(w, http.StatusServiceUnavailable, "ошибка сервера")
+		return
 	}
 
-	fmt.Printf("EventId : %d | User : %d | Date : %s | Name : %s\n", createdEvent.ID, createdEvent.UserID, createdEvent.Date, createdEvent.Name)
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated) // 201
-
-	json.NewEncoder(w).Encode(createdEvent)
+	writeResult(w, http.StatusCreated, createdEvent)
 }
 
-// UpdateEvent обновляет существующее событие по ID
-// @Summary      Update event
-// @Description  Updates an existing event by id
+// UpdateEvent
+// @Summary      Обновить событие
+// @Description  Обновляет событие по указанному ID
 // @Accept       json
 // @Produce      json
-// @Success      200 {object} store.Event
+// @Param        id query int true "ID события"
+// @Param        input body store.Event true "JSON события"
+// @Success      200 {object} web.ResultResponse "Обновлённое событие"
+// @Failure      400 {object} web.ErrorResponse "Некорректные параметры"
+// @Failure      404 {object} web.ErrorResponse "Событие не найдено"
+// @Failure      503 {object} web.ErrorResponse "Ошибка логики"
 // @Router       /update_event [post]
 func (st *EventServer) UpdateEvent(w http.ResponseWriter, r *http.Request) {
 	idStr := r.URL.Query().Get("id")
 	if idStr == "" {
-		http.Error(w, "missing id", http.StatusBadRequest) // 400
+		writeError(w, http.StatusBadRequest, "не указан id")
 		return
 	}
 
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest) // 400
+		writeError(w, http.StatusBadRequest, "неправильный формат id")
 		return
 	}
 
 	var input store.Event
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest) // 400
-		log.Println("Method:", r.Method)
-		log.Println("Content-Type:", r.Header.Get("Content-Type"))
+		writeError(w, http.StatusBadRequest, "невалидный JSON")
+		return
 	}
 
 	updatedEvent, err := st.Service.UpdateEvent(id, &input)
 	if err != nil {
-		log.Printf("ошибка при обновления события %v", err)
-		http.Error(w, err.Error(), http.StatusServiceUnavailable) // 503 хотя мне кажется 404
+		log.Printf("ошибка при обновлении: %v", err)
+		writeError(w, http.StatusNotFound, err.Error())
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK) // 200
-
-	json.NewEncoder(w).Encode(updatedEvent)
+	writeResult(w, http.StatusOK, updatedEvent)
 }
 
-// DeleteEvent удаляет событие по ID
-// @Summary      Delete event
-// @Description  Deletes an event by id
+// DeleteEvent
+// @Summary      Удалить событие
+// @Description  Удаляет событие по ID
 // @Produce      json
-// @Success      200 {object} store.Event
+// @Param        id query int true "ID события"
+// @Success      200 {object} web.ResultResponse "Удалённое событие"
+// @Failure      400 {object} web.ErrorResponse "Некорректные параметры"
+// @Failure      404 {object} web.ErrorResponse "Событие не найдено"
+// @Failure      503 {object} web.ErrorResponse "Ошибка логики"
 // @Router       /delete_event [delete]
 func (st *EventServer) DeleteEvent(w http.ResponseWriter, r *http.Request) {
 	idStr := r.URL.Query().Get("id")
 	if idStr == "" {
-		http.Error(w, "missing id", http.StatusBadRequest) // 400
+		writeError(w, http.StatusBadRequest, "не указан id")
 		return
 	}
 
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest) // 400
+		writeError(w, http.StatusBadRequest, "неправильный формат id")
 		return
 	}
 
 	deletedEv, err := st.Service.DeleteEvent(id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusServiceUnavailable) // 503 если не нашли событие
+		writeError(w, http.StatusNotFound, err.Error())
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK) // 200
-
-	json.NewEncoder(w).Encode(deletedEv)
+	writeResult(w, http.StatusOK, deletedEv)
 }
 
-// GetEventsForDay возвращает события пользователя за конкретный день
-// @Summary      Get events for day
-// @Description  Returns events of user for specific day
+// GetEventsForDay
+// @Summary      Получить события за день
+// @Description  Возвращает события пользователя за указанный день
 // @Produce      json
-// @Success      200 {array} store.Event
+// @Param        user_id query int true "ID пользователя"
+// @Param        date query string true "Дата YYYY-MM-DD"
+// @Success      200 {object} web.ResultResponse "События за день"
+// @Failure      400 {object} web.ErrorResponse "Некорректные параметры"
+// @Failure      503 {object} web.ErrorResponse "Ошибка логики"
 // @Router       /events_for_day [get]
 func (st *EventServer) GetEventsForDay(w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query()
+	q := r.URL.Query()
+	userIDS := q.Get("user_id")
+	dateStr := q.Get("date")
 
-	userIDS := query.Get("user_id")
-	dateStr := query.Get("date")
-
-	if userIDS == " " || dateStr == " " {
-		http.Error(w, "missing parametrs", http.StatusBadRequest) // 400
+	if userIDS == "" || dateStr == "" {
+		writeError(w, http.StatusBadRequest, "не указаны параметры")
+		return
 	}
 
 	userID, err := strconv.ParseInt(userIDS, 10, 64)
 	if err != nil {
-		http.Error(w, "invalid user_id", http.StatusBadRequest) // 400
+		writeError(w, http.StatusBadRequest, "неправильный формат user_id")
 		return
 	}
 
-	eventsForDay, err := st.Service.GetEventsForDay(userID, dateStr)
+	events, err := st.Service.GetEventsForDay(userID, dateStr)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest) // 400
+		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK) // 200
-
-	json.NewEncoder(w).Encode(eventsForDay)
+	writeResult(w, http.StatusOK, events)
 }
 
-// GetEventsForWeek возвращает события пользователя за неделю, содержащую указанную дату
-// @Summary      Get events for week
-// @Description  Returns events of user for week of given date
+// GetEventsForWeek
+// @Summary      Получить события за неделю
+// @Description  Возвращает события пользователя за неделю
 // @Produce      json
-// @Success      200 {array} store.Event
+// @Param        user_id query int true "ID пользователя"
+// @Param        date query string true "Дата YYYY-MM-DD"
+// @Success      200 {object} web.ResultResponse "События за неделю"
+// @Failure      400 {object} web.ErrorResponse "Некорректные параметры"
+// @Failure      503 {object} web.ErrorResponse "Ошибка логики"
 // @Router       /events_for_week [get]
 func (st *EventServer) GetEventsForWeek(w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query()
-
-	userIDS := query.Get("user_id")
-	dateStr := query.Get("date")
+	q := r.URL.Query()
+	userIDS := q.Get("user_id")
+	dateStr := q.Get("date")
 
 	if userIDS == "" || dateStr == "" {
-		http.Error(w, "missing parameters", http.StatusBadRequest) // 400
+		writeError(w, http.StatusBadRequest, "не указаны параметры")
 		return
 	}
 
 	userID, err := strconv.ParseInt(userIDS, 10, 64)
 	if err != nil {
-		http.Error(w, "invalid user_id", http.StatusBadRequest) // 400
+		writeError(w, http.StatusBadRequest, "неправильный формат user_id")
 		return
 	}
 
-	eventsForWeek, err := st.Service.GetEventsForWeek(userID, dateStr)
+	events, err := st.Service.GetEventsForWeek(userID, dateStr)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest) // 400
+		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK) // 200
-
-	json.NewEncoder(w).Encode(eventsForWeek)
+	writeResult(w, http.StatusOK, events)
 }
 
-// GetEventsForMonth возвращает события пользователя за месяц, содержащий указанную дату
-// @Summary      Get events for month
-// @Description  Returns events of user for month of given date
+// GetEventsForMonth
+// @Summary      Получить события за месяц
+// @Description  Возвращает события пользователя за месяц
 // @Produce      json
-// @Success      200 {array} store.Event
+// @Param        user_id query int true "ID пользователя"
+// @Param        date query string true "Дата YYYY-MM-DD"
+// @Success      200 {object} web.ResultResponse "События за месяц"
+// @Failure      400 {object} web.ErrorResponse "Некорректные параметры"
+// @Failure      503 {object} web.ErrorResponse "Ошибка логики"
 // @Router       /events_for_month [get]
 func (st *EventServer) GetEventsForMonth(w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query()
-
-	userIDS := query.Get("user_id")
-	dateStr := query.Get("date")
+	q := r.URL.Query()
+	userIDS := q.Get("user_id")
+	dateStr := q.Get("date")
 
 	if userIDS == "" || dateStr == "" {
-		http.Error(w, "missing parameters", http.StatusBadRequest) // 400
+		writeError(w, http.StatusBadRequest, "не указаны параметры")
 		return
 	}
 
 	userID, err := strconv.ParseInt(userIDS, 10, 64)
 	if err != nil {
-		http.Error(w, "invalid user_id", http.StatusBadRequest) // 400
+		writeError(w, http.StatusBadRequest, "неправильный формат user_id")
 		return
 	}
 
-	eventsForMonth, err := st.Service.GetEventsForMonth(userID, dateStr)
+	events, err := st.Service.GetEventsForMonth(userID, dateStr)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest) // 400
+		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK) // 200
+	writeResult(w, http.StatusOK, events)
+}
 
-	json.NewEncoder(w).Encode(eventsForMonth)
+func writeError(w http.ResponseWriter, code int, msg string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	json.NewEncoder(w).Encode(ErrorResponse{Error: msg})
+}
+
+func writeResult(w http.ResponseWriter, code int, data any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	json.NewEncoder(w).Encode(ResultResponse{Result: data})
 }
