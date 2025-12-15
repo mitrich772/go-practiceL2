@@ -342,16 +342,6 @@ func removeDuplicatesSorted(lines []string) []string {
 	return uniq
 }
 
-// Урезает хвостовые пробелы если надо
-// func cleanTrailingBlanks(lines []string) []string {
-// 	cleaned := make([]string, 0, len(lines))
-// 	for _, l := range lines {
-// 		s := strings.TrimRight(l, " \t") // убираем и хвостовые, и ведущие пробелы
-// 		cleaned = append(cleaned, s)
-// 	}
-// 	return cleaned
-// }
-
 // Читает все непустые строки с файла
 func readLines(filename string) ([]string, error) {
 	file, err := os.Open(filename)

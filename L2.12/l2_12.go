@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-type Finder struct {
+type finder struct {
 	afterMatch  int
 	beforeMatch int
 	ignoreReg   bool
@@ -20,28 +20,29 @@ type Finder struct {
 	onlyDigit   bool
 	fixed       bool
 }
-type Line struct {
-	Num  int
-	Text string
+
+type line struct {
+	num  int
+	text string
 }
 
-func ReadLines(filename string) ([]Line, error) {
+func readLines(filename string) ([]line, error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
 
-	var lines []Line
+	var lines []line
 	scanner := bufio.NewScanner(file)
 	lineNum := 1
 
 	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.TrimSpace(line) != "" { // пропускаем пустые строки
-			lines = append(lines, Line{
-				Num:  lineNum,
-				Text: line,
+		text := scanner.Text()
+		if strings.TrimSpace(text) != "" {
+			lines = append(lines, line{
+				num:  lineNum,
+				text: text,
 			})
 		}
 		lineNum++
@@ -54,152 +55,125 @@ func ReadLines(filename string) ([]Line, error) {
 	return lines, nil
 }
 
-func ParseFilenameExpr() (filename string, expr string) {
-	filename = parseFilename()
-	expr = parseExpr()
-	os.Args = os.Args[:len(os.Args)-2]
-	return
-}
-
-func parseExpr() (expr string) {
+func parseFilenameExpr() (filename string, expr string) {
 	argsLen := len(os.Args)
 	expr = os.Args[argsLen-2]
-	return
-}
-
-func parseFilename() (filename string) {
-	argsLen := len(os.Args)
 	filename = os.Args[argsLen-1]
+	os.Args = os.Args[:argsLen-2]
 	return
 }
 
-// Выводит массив строк
-func (fn Finder) PrintLines(lines []Line) {
-	for _, line := range lines {
+func (fn finder) printLines(lines []line) {
+	for _, l := range lines {
 		if fn.addStrNum {
-			fmt.Printf("%d ", line.Num)
+			fmt.Printf("%d ", l.num)
 		}
-		fmt.Println(line.Text)
+		fmt.Println(l.text)
 	}
 }
 
-// Только число совпадений ввиде Line
-func (fn Finder) findOnlydigit(lines []Line, re *regexp.Regexp) (result Line) {
-	digit := 0
-	for _, line := range lines {
-		if fn.matchWithInvertFlag(line, re) {
-			digit++
+func (fn finder) findOnlyDigit(lines []line, re *regexp.Regexp) line {
+	count := 0
+	for _, l := range lines {
+		if fn.matchWithInvert(l, re) {
+			count++
 		}
 	}
-	result = Line{Text: strconv.Itoa(digit)}
-	return
+	return line{text: strconv.Itoa(count)}
 }
 
-// Ищет строки + контекст -A -B
-func (fn Finder) findWithContex(lines []Line, re *regexp.Regexp) (result []Line) {
-	for i, line := range lines {
-		if fn.matchWithInvertFlag(line, re) { // Тут по inverted
-			//log.Printf("%d", len(re.FindAllString(line, -1)))
-			if (fn.beforeMatch > i) && (fn.afterMatch > (len(lines)-1)-i) { // Если в начале и конце мало строк (да так тоже может быть)
-				result = append(result, lines[:i+1]...)
-				result = append(result, lines[i:]...)
-			} else if fn.afterMatch > (len(lines)-1)-i { // Если в конце мало строк
-				result = append(result, lines[i-fn.beforeMatch:i]...) // Добавляем перед совпадением не включая совпадение
-				result = append(result, lines[i:]...)
-			} else if fn.beforeMatch > i { // Если в начале мало строк
-				result = append(result, lines[:i+1]...)
-				result = append(result, lines[i:i+fn.afterMatch+1]...) // Добавляем после совпадения включая совпадение
-			} else {
-				result = append(result, lines[i-fn.beforeMatch:i]...)  // Добавляем перед совпадением не включая совпадение
-				result = append(result, lines[i:i+fn.afterMatch+1]...) // Добавляем после совпадения включая совпадение
-			}
+func (fn finder) findWithContext(lines []line, re *regexp.Regexp) []line {
+	var result []line
 
-			result = append(result, Line{Text: "-----------------"})
+	for i, l := range lines {
+		if !fn.matchWithInvert(l, re) {
+			continue
+		}
+
+		start := i - fn.beforeMatch
+		if start < 0 {
+			start = 0
+		}
+
+		end := i + fn.afterMatch + 1
+		if end > len(lines) {
+			end = len(lines)
+		}
+
+		result = append(result, lines[start:end]...)
+		result = append(result, line{text: "-----------------"})
+	}
+
+	return result
+}
+
+func (fn finder) findNoContext(lines []line, re *regexp.Regexp) []line {
+	var result []line
+	for _, l := range lines {
+		if fn.matchWithInvert(l, re) {
+			result = append(result, l)
 		}
 	}
-	return
+	return result
 }
 
-// Ищет строки без контекста
-func (fn Finder) findNoContex(lines []Line, re *regexp.Regexp) (result []Line) {
-	for _, line := range lines {
-		if fn.matchWithInvertFlag(line, re) {
-			result = append(result, line)
-		}
-	}
-	return
+func (fn finder) matchWithInvert(l line, re *regexp.Regexp) bool {
+	return re.MatchString(l.text) != fn.invert
 }
 
-// Выдает bool для строк которые содержат/не содержат match от fn.inverted false/true
-func (fn Finder) matchWithInvertFlag(line Line, re *regexp.Regexp) (res bool) {
-	return re.MatchString(line.Text) != fn.invert
-}
-
-// FindStrings ищет строки по паттерну в зависимости от заданных параметров
-func (fn Finder) FindStrings(lines []Line, template string) ([]Line, error) {
-	var result []Line
-	// Если надо воспринимать буквально
+func (fn finder) findStrings(lines []line, template string) ([]line, error) {
 	if fn.fixed {
 		template = regexp.QuoteMeta(template)
 	}
-	// Если надо игнорировать регистр
 	if fn.ignoreReg {
 		template = `(?i)` + template
 	}
-	// Готовим регулярку
+
 	re, err := regexp.Compile(template)
 	if err != nil {
 		return nil, err
 	}
-	if fn.onlyDigit { // если надо только число вывести
-		result = append(result, fn.findOnlydigit(lines, re))
-	} else if fn.beforeMatch > 0 || fn.afterMatch > 0 { // До или после контекст
-		result = append(result, fn.findWithContex(lines, re)...)
-	} else { //Контекст до и после равен 0 меньше нуля не может быть (Выводим только строку с совпадением)
-		result = append(result, fn.findNoContex(lines, re)...)
+
+	switch {
+	case fn.onlyDigit:
+		return []line{fn.findOnlyDigit(lines, re)}, nil
+	case fn.beforeMatch > 0 || fn.afterMatch > 0:
+		return fn.findWithContext(lines, re), nil
+	default:
+		return fn.findNoContext(lines, re), nil
 	}
-	return result, nil
 }
 
 func main() {
-	var fn Finder
-	var aroundMatch int
-	filename, expression := ParseFilenameExpr()
+	var fn finder
+	var around int
 
-	flag.BoolVar(&fn.ignoreReg, "i", false, "Ignore register")
-	flag.BoolVar(&fn.invert, "v", false, "invert, print strings with no match")
-	flag.BoolVar(&fn.addStrNum, "n", false, "add string number in macth string start")
-	flag.BoolVar(&fn.onlyDigit, "c", false, "print only number of matches")
-	flag.BoolVar(&fn.fixed, "F", false, "seek full match")
-	flag.IntVar(&fn.afterMatch, "A", 0, "Print N strings after match")
-	if fn.afterMatch < 0 {
-		log.Println("-A N должно получить положительное число, так что я исправлю на ноль, типо ничего не было ;)")
-	}
-	flag.IntVar(&fn.beforeMatch, "B", 0, "Print N strings before match")
-	if fn.afterMatch < 0 {
-		log.Println("-B N должно получить положительное число, так что я исправлю на ноль, типо ничего не было ;)")
-	}
-	flag.IntVar(&aroundMatch, "C", 0, "Print N strings around match")
-	if fn.afterMatch < 0 {
-		log.Println("-A N должно получить положительное число, так что я исправлю на ноль, типо ничего не было ;)")
-	}
+	filename, expr := parseFilenameExpr()
+
+	flag.BoolVar(&fn.ignoreReg, "i", false, "ignore case")
+	flag.BoolVar(&fn.invert, "v", false, "invert match")
+	flag.BoolVar(&fn.addStrNum, "n", false, "print line number")
+	flag.BoolVar(&fn.onlyDigit, "c", false, "print only match count")
+	flag.BoolVar(&fn.fixed, "F", false, "fixed string search")
+	flag.IntVar(&fn.afterMatch, "A", 0, "print N lines after match")
+	flag.IntVar(&fn.beforeMatch, "B", 0, "print N lines before match")
+	flag.IntVar(&around, "C", 0, "print N lines around match")
 	flag.Parse()
-	// Перебиваем -C в -B -A
-	if aroundMatch > 0 {
-		fn.afterMatch = aroundMatch
-		fn.beforeMatch = aroundMatch
+
+	if around > 0 {
+		fn.afterMatch = around
+		fn.beforeMatch = around
 	}
 
-	fmt.Printf("Имя файла: %s\nВыражение для поиска: %s\n", filename, expression)
-
-	lines, err := ReadLines(filename)
+	lines, err := readLines(filename)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	findedLines, err := fn.FindStrings(lines, expression)
+	result, err := fn.findStrings(lines, expr)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fn.PrintLines(findedLines)
+
+	fn.printLines(result)
 }

@@ -10,32 +10,35 @@ import (
 	"strings"
 )
 
-type Cutter struct {
+type cutter struct {
 	delimiter string
 	fields    string
 	separated bool
 }
 
-func (ct Cutter) CutStrings(lines []string) ([]string, error) {
+func (ct cutter) cutStrings(lines []string) ([]string, error) {
 	var res []string
 	for _, line := range lines {
-		cutedLine := strings.Split(line, ct.delimiter)
-		if len(cutedLine) == 1 { // без разделителя строка
-			if !ct.separated { // если выводим все строки
-				res = append(res, cutedLine...)
+		parts := strings.Split(line, ct.delimiter)
+		// строка без разделителя
+		if len(parts) == 1 {
+			if !ct.separated {
+				res = append(res, line)
 			}
-		} else { // с разделителем
-			parsedColumnLine, err := ct.getNeeded(cutedLine, ct.parseFieldsToIntSlice(len(cutedLine)))
-			if err != nil {
-				return nil, err
-			}
-			res = append(res, parsedColumnLine)
+			continue
 		}
+		cols := ct.parseFieldsToIntSlice(len(parts))
+		parsed := ct.getNeeded(parts, cols)
+		// если ничего не выбрано — пропускаем
+		if parsed == "" {
+			continue
+		}
+		res = append(res, parsed)
 	}
 	return res, nil
 }
 
-func (ct Cutter) parseFieldsToIntSlice(max int) []int {
+func (ct cutter) parseFieldsToIntSlice(max int) []int {
 	var res []int
 
 	if ct.fields == "" {
@@ -47,8 +50,12 @@ func (ct Cutter) parseFieldsToIntSlice(max int) []int {
 
 	parts := strings.Split(ct.fields, ",")
 	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
 		if strings.Contains(part, "-") {
-			bounds := strings.Split(part, "-")
+			bounds := strings.SplitN(part, "-", 2)
 			if len(bounds) != 2 {
 				continue
 			}
@@ -69,20 +76,21 @@ func (ct Cutter) parseFieldsToIntSlice(max int) []int {
 	return res
 }
 
-// Возвращает строку состоящую тольок из нужных колонок
-func (ct Cutter) getNeeded(cutedLine []string, columnsToSave []int) (string, error) {
-	var res []string
-	for _, columnNumber := range columnsToSave {
-		if columnNumber <= 0 || columnNumber > len(cutedLine) {
-			return "", fmt.Errorf("колонка %d не может быть в строке разбитой на %d колонок", columnNumber, len(cutedLine))
+// getNeeded возвращает строку, состоящую только из указанных колонок.
+// Поля, выходящие за пределы, игнорируются (не считаются ошибкой).
+func (ct cutter) getNeeded(parts []string, columnsToSave []int) string {
+	var out []string
+	for _, col := range columnsToSave {
+		if col <= 0 || col > len(parts) {
+			// игнорируем выход за пределы
+			continue
 		}
-		res = append(res, cutedLine[columnNumber-1])
+		out = append(out, parts[col-1])
 	}
-	return strings.Join(res, ct.delimiter), nil
+	return strings.Join(out, ct.delimiter)
 }
 
-// Читает все непустые строки с файла
-func ReadLines(filename string) ([]string, error) {
+func readLines(filename string) ([]string, error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, err
@@ -93,9 +101,8 @@ func ReadLines(filename string) ([]string, error) {
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := scanner.Text()
-		if strings.TrimSpace(line) != "" { // пропускаем пустые строки
-			lines = append(lines, line)
-		}
+		// сохраняем даже пустые строки — поведение можно изменить при необходимости
+		lines = append(lines, line)
 	}
 	if err := scanner.Err(); err != nil {
 		return nil, err
@@ -103,26 +110,6 @@ func ReadLines(filename string) ([]string, error) {
 	return lines, nil
 }
 
-func ParseFilenameExpr() (filename string, expr string) {
-	filename = parseFilename()
-	expr = parseExpr()
-	os.Args = os.Args[:len(os.Args)-2]
-	return
-}
-
-func parseExpr() (expr string) {
-	argsLen := len(os.Args)
-	expr = os.Args[argsLen-2]
-	return
-}
-
-func parseFilename() (filename string) {
-	argsLen := len(os.Args)
-	filename = os.Args[argsLen-1]
-	return
-}
-
-// Выводит массив строк
 func printLines(lines []string) {
 	for _, v := range lines {
 		fmt.Println(v)
@@ -130,24 +117,41 @@ func printLines(lines []string) {
 }
 
 func main() {
-	var ct Cutter
+	var ct cutter
 
-	filename := parseFilename()
-	fmt.Printf("Имя файла: %s\n", filename)
-
-	flag.StringVar(&ct.delimiter, "d", "\t", "set delimiter to strings")
-	flag.StringVar(&ct.fields, "f", "", "set delimiter to strings")
-	flag.BoolVar(&ct.separated, "s", false, "print only string that contain delimiter")
+	flag.StringVar(&ct.delimiter, "d", "\t", "delimiter (default is tab)")
+	flag.StringVar(&ct.fields, "f", "", "fields to select, e.g. 1,3-5")
+	flag.BoolVar(&ct.separated, "s", false, "only print lines that contain the delimiter")
 	flag.Parse()
 
-	lines, err := ReadLines(filename)
+	args := flag.Args()
+	var (
+		filename string
+		lines    []string
+		err      error
+	)
+
+	if len(args) > 0 {
+		filename = args[0]
+		fmt.Printf("Имя файла: %s\n", filename)
+		lines, err = readLines(filename)
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		// читаем из STDIN
+		scanner := bufio.NewScanner(os.Stdin)
+		for scanner.Scan() {
+			lines = append(lines, scanner.Text())
+		}
+		if err = scanner.Err(); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	cutedLines, err := ct.cutStrings(lines)
 	if err != nil {
 		log.Fatal(err)
 	}
-	cutedLines, err := ct.CutStrings(lines)
-	if err != nil {
-		log.Println(err)
-	}
 	printLines(cutedLines)
-
 }

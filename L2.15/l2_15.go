@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"os/signal"
 	"runtime"
 	"strconv"
 	"strings"
@@ -13,17 +14,36 @@ import (
 	"syscall"
 )
 
+var (
+	currentCmd *exec.Cmd
+	cmdMu      sync.Mutex
+)
+
+func setupSignalHandler() {
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt)
+
+	go func() {
+		for range sigCh {
+			cmdMu.Lock()
+			if currentCmd != nil && currentCmd.Process != nil {
+				_ = currentCmd.Process.Signal(syscall.SIGINT)
+			}
+			cmdMu.Unlock()
+		}
+	}()
+}
+
 func runInteractive() {
 	reader := bufio.NewReader(os.Stdin)
 	for {
 		fmt.Print("> ")
 		line, err := reader.ReadString('\n')
-		if err != nil { // Ctrl+D
-			fmt.Printf("ошибка %v", err)
+		if err != nil {
 			break
 		}
 		commands := parseLineToCommands(line)
-		RunCommands(commands)
+		runCommands(commands)
 	}
 }
 
@@ -43,7 +63,7 @@ func runScript(filename string) {
 			continue
 		}
 		commands := parseLineToCommands(line)
-		RunCommands(commands)
+		runCommands(commands)
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -65,11 +85,9 @@ func parseLineToCommands(line string) [][]string {
 	return result
 }
 
-// выполняет одну команду
 func runCommand(name string, args []string, in io.Reader, out io.Writer) int {
 	switch name {
 
-	// ====== встроенные ======
 	case "cd":
 		path := ""
 		if len(args) > 0 {
@@ -77,7 +95,7 @@ func runCommand(name string, args []string, in io.Reader, out io.Writer) int {
 		} else {
 			path = os.Getenv("HOME")
 			if path == "" {
-				path = os.Getenv("USERPROFILE") // для Windows
+				path = os.Getenv("USERPROFILE")
 			}
 		}
 
@@ -132,6 +150,7 @@ func runCommand(name string, args []string, in io.Reader, out io.Writer) int {
 			return 1
 		}
 		return 0
+
 	case "upper":
 		scanner := bufio.NewScanner(in)
 		for scanner.Scan() {
@@ -142,6 +161,7 @@ func runCommand(name string, args []string, in io.Reader, out io.Writer) int {
 			return 1
 		}
 		return 0
+
 	case "ps":
 		var cmd *exec.Cmd
 		if runtime.GOOS == "windows" {
@@ -160,14 +180,28 @@ func runCommand(name string, args []string, in io.Reader, out io.Writer) int {
 	case "exit":
 		os.Exit(0)
 
-	// ====== внешние ======
 	default:
 		cmd := exec.Command(name, args...)
 		cmd.Stdin = in
 		cmd.Stdout = out
 		cmd.Stderr = os.Stderr
 
-		if err := cmd.Run(); err != nil {
+		cmdMu.Lock()
+		currentCmd = cmd
+		cmdMu.Unlock()
+
+		err := cmd.Run()
+
+		cmdMu.Lock()
+		currentCmd = nil
+		cmdMu.Unlock()
+
+		if err != nil {
+			if exitErr, ok := err.(*exec.ExitError); ok {
+				if exitErr.ExitCode() == -1 {
+					return 130
+				}
+			}
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			return 1
 		}
@@ -175,9 +209,7 @@ func runCommand(name string, args []string, in io.Reader, out io.Writer) int {
 	return 0
 }
 
-// RunCommands запускает переданные команды
-// если len(commands) > 1 то делает из них pipeline
-func RunCommands(commands [][]string) int {
+func runCommands(commands [][]string) int {
 	if len(commands) == 0 {
 		return 0
 	}
@@ -185,7 +217,6 @@ func RunCommands(commands [][]string) int {
 		return runCommand(commands[0][0], commands[0][1:], os.Stdin, os.Stdout)
 	}
 
-	// Создаем пайпы для соединения команд
 	readers := make([]*io.PipeReader, len(commands)-1)
 	writers := make([]*io.PipeWriter, len(commands)-1)
 
@@ -208,7 +239,6 @@ func RunCommands(commands [][]string) int {
 			if i > 0 {
 				in = readers[i-1]
 			}
-
 			if i < len(commands)-1 {
 				out = writers[i]
 			}
@@ -216,11 +246,10 @@ func RunCommands(commands [][]string) int {
 			code := runCommand(cmd[0], cmd[1:], in, out)
 
 			if i < len(commands)-1 {
-				writers[i].Close()
+				_ = writers[i].Close()
 			}
 
 			exitCodes <- code
-
 		}(i, commands[i])
 	}
 
@@ -236,12 +265,11 @@ func RunCommands(commands [][]string) int {
 }
 
 func main() {
+	setupSignalHandler()
+
 	if len(os.Args) > 1 {
-		// Режим скрипта
-		filename := os.Args[1]
-		runScript(filename)
+		runScript(os.Args[1])
 	} else {
-		// Интерактивный режим
 		runInteractive()
 	}
 }
