@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// pathFromURL делает безопасное имя файла из URL и его путь от raw
+// PathFromURL делает безопасное имя файла из URL и его путь от raw
 // если нет нужного пути создает папки, гарантирует что возвращаемый путь существует
 func PathFromURL(raw, saveDir string) string {
 	u, err := url.Parse(raw)

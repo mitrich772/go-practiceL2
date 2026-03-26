@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"L2.16/internal/crawler"
 )
@@ -24,7 +25,10 @@ func main() {
 	}
 
 	c := crawler.Crawler{
-		Client:   &http.Client{},
+		// Добавили таймаут, чтобы зависшие ресурсы отваливались по ошибке, а не вешали всю программу
+		Client: &http.Client{
+			Timeout: 15 * time.Second,
+		},
 		Visited:  make(map[string]bool),
 		SaveDir:  outDir,
 		MaxDepth: depth,

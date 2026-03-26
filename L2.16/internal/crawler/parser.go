@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"golang.org/x/net/html"
 )
@@ -19,37 +20,56 @@ func contain[T comparable](elem T, slice []T) bool {
 	return false
 }
 
-// FindLinks рекурсивно ищет href в тегах
+// FindLinks ищет href в тегах и отправляет их в канал.
 // tags слайс тегов в которых искать ссылки
-func FindLinks(node *html.Node, base *url.URL, tags []string) (links []string) {
-	if node == nil {
-		return nil
-	}
-	if node.Type == html.ElementNode && contain(node.Data, tags) {
-		for _, v := range node.Attr {
-			if v.Key == "href" || v.Key == "src" {
-				// Нашли ссылку парсим ее в url, добавляем абсолютный путь
-				u, err := url.Parse(v.Val)
-				if err != nil {
-					continue
-				}
-				if base != nil {
-					u = base.ResolveReference(u)
-				}
-				// Если нет схемы то добавлям базовую
-				if u.Scheme == "" {
-					u.Scheme = base.Scheme
-				}
-				if u.Scheme == "http" || u.Scheme == "https" {
-					links = append(links, u.String())
+func FindLinks(node *html.Node, base *url.URL, tags []string, links chan string) {
+	// Создаем единую WaitGroup для всех дочерних элементов
+	var wg sync.WaitGroup
+
+	// Внутренняя функция для рекурсивного обхода дерева
+	var walk func(*html.Node)
+	walk = func(n *html.Node) {
+		if n == nil {
+			return
+		}
+
+		if n.Type == html.ElementNode && contain(n.Data, tags) {
+			for _, v := range n.Attr {
+				if v.Key == "href" || v.Key == "src" {
+					// Нашли ссылку парсим ее в url, добавляем абсолютный путь
+					u, err := url.Parse(v.Val)
+					if err != nil {
+						continue
+					}
+					if base != nil {
+						u = base.ResolveReference(u)
+					}
+					// Если нет схемы то добавлям базовую
+					if u.Scheme == "" {
+						u.Scheme = base.Scheme
+					}
+					if u.Scheme == "http" || u.Scheme == "https" {
+						links <- u.String()
+					}
 				}
 			}
 		}
+
+		for child := n.FirstChild; child != nil; child = child.NextSibling {
+			wg.Add(1)
+
+			go func(c *html.Node) {
+				defer wg.Done()
+				walk(c)
+			}(child)
+		}
 	}
-	for child := node.FirstChild; child != nil; child = child.NextSibling {
-		links = append(links, FindLinks(child, base, tags)...)
-	}
-	return links
+
+	walk(node)
+
+	wg.Wait()
+
+	close(links)
 }
 
 // RewriteLinksAndSaveResources проходит по HTML-дереву, находит ссылки (href/src),

@@ -14,6 +14,7 @@ import (
 	"golang.org/x/net/html"
 )
 
+// Crawler представляет собой структуру с настройками для обхода страниц.
 type Crawler struct {
 	Client   *http.Client
 	Visited  map[string]bool
@@ -21,7 +22,7 @@ type Crawler struct {
 	MaxDepth int
 }
 
-// Сrawl рекурсивно проходит все странички до depth, и скачивает их вместе с ресурсами
+// Crawl рекурсивно проходит все странички до depth, и скачивает их вместе с ресурсами
 func (cr *Crawler) Crawl(baseURL string, depth int) ([]string, error) {
 	// Если достигли максимальной глубины -> возвращаем пустоту
 	if depth <= 0 {
@@ -81,12 +82,15 @@ func (cr *Crawler) Crawl(baseURL string, depth int) ([]string, error) {
 	fmt.Printf("Сохранено: %s\n", filePath)
 
 	// уже в модифицированной страничке ищем ссылки на другие странички по тегу "a"
-	links := FindLinks(doc, base, []string{"a"})
+	links := make(chan string)
+
+	// ВАЖНО: нужно запустить парсер, который будет писать в канал, иначе for loop будет ждать вечно
+	go FindLinks(doc, base, []string{"a"}, links)
 
 	// для дочерних страниц
 	childPages := []string{}
 
-	for _, link := range links {
+	for link := range links {
 		if strings.HasPrefix(link, "mailto:") || strings.HasPrefix(link, "tel:") {
 			continue
 		}
